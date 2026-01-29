@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Themis CRM</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .app { display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: #fff; border-right: 1px solid #e0e0e0; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .logo { font-size: 22px; font-weight: 700; padding: 0 20px 30px; }
+        .logo span { color: #FFDF48; }
+        .nav-section { font-size: 11px; font-weight: 600; color: #888; padding: 20px 20px 10px; text-transform: uppercase; }
+        .nav-item { display: block; padding: 12px 20px; cursor: pointer; font-size: 14px; color: #555; border: none; background: none; width: 100%; text-align: left; }
+        .nav-item:hover { background: #f5f5f5; }
+        .nav-item.active { background: #FFDF48; font-weight: 600; }
+        .main { flex: 1; margin-left: 220px; padding: 30px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .topbar h1 { font-size: 24px; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none; }
+        .btn-primary { background: #FFDF48; }
+        .btn-primary:hover { background: #f0d000; }
+        .btn-secondary { background: #e0e0e0; }
+        .btn-danger { background: #ffdddd; color: #cc0000; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+        .card:hover { border-color: #FFDF48; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .card h3 { font-size: 16px; margin-bottom: 8px; }
+        .card p { font-size: 13px; color: #666; margin-bottom: 5px; }
+        .tag { display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 12px; background: #e8f4ff; color: #0066cc; margin-right: 5px; margin-top: 8px; }
+        .tag.contract { background: #e8f4ff; color: #0066cc; }
+        .tag.perm { background: #f0e8ff; color: #6600cc; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: #fff; border-radius: 12px; padding: 30px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal h2 { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #FFDF48; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .empty { text-align: center; padding: 60px; color: #888; }
+        .notification { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 15px 25px; border-radius: 8px; z-index: 9999; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .kpi { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
+        .kpi.highlight { border-color: #FFDF48; background: #fffef5; }
+        .kpi-value { font-size: 32px; font-weight: 700; }
+        .kpi-label { font-size: 13px; color: #666; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { width: 100%; max-width: 400px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .pipeline { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; }
+        .pipeline-col { min-width: 280px; background: #fff; border-radius: 12px; padding: 15px; border: 1px solid #e0e0e0; }
+        .pipeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .pipeline-title { font-weight: 600; }
+        .pipeline-count { background: #FFDF48; padding: 2px 10px; border-radius: 10px; font-size: 12px; }
+        .pipeline-card { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: grab; }
+        .pipeline-card:hover { border-color: #FFDF48; }
+        .pipeline-card h4 { font-size: 14px; margin-bottom: 4px; }
+        .pipeline-card p { font-size: 12px; color: #666; }
+        .margin-good { color: #00aa00; }
+        .margin-ok { color: #cc8800; }
+        .margin-low { color: #cc0000; }
+        .detail-panel { position: fixed; top: 0; right: 0; width: 450px; height: 100vh; background: #fff; border-left: 1px solid #e0e0e0; z-index: 500; overflow-y: auto; padding: 30px; box-shadow: -5px 0 20px rgba(0,0,0,0.1); }
+        .detail-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+        .detail-close { background: none; border: none; font-size: 24px; cursor: pointer; }
+        .detail-section { margin-bottom: 25px; }
+        .detail-section h4 { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 10px; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+    </style>
+</head>
+<body>
+<script>
+// Handle URL parameter BEFORE React loads
+(function(){
+    var params = new URLSearchParams(window.location.search);
+    var data = params.get('addCandidate');
+    if(data){
+        try {
+            var c = JSON.parse(data);
+            // Store temporarily, Supabase will pick it up
+            localStorage.setItem('pending_candidate', JSON.stringify(c));
+            window.history.replaceState({},'',window.location.pathname);
+        }catch(e){console.error(e);}
+    }
+})();
+</script>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// Supabase Config
+const SUPABASE_URL = 'https://hmmmhtjchhjfwadoqyrb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtbW1odGpjaGhqZndhZG9xeXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDkyMDEsImV4cCI6MjA4NTI4NTIwMX0.4uPu94UWKBe6n6qKPvTbNan3Aba57d4VDKwejwsLTQ8';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function App() {
+    const [view, setView] = useState('dashboard');
+    const [candidates, setCandidates] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [contacts, setContacts] = useState([]);
+    const [jobs, setJobs] = useState([]);
+    const [submissions, setSubmissions] = useState([]);
+    const [activities, setActivities] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [modal, setModal] = useState(null);
+    const [editItem, setEditItem] = useState(null);
+    const [detailItem, setDetailItem] = useState(null);
+    const [notify, setNotify] = useState(null);
+    const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        loadAll();
+        checkPendingCandidate();
+    }, []);
+
+    const checkPendingCandidate = async () => {
+        const pending = localStorage.getItem('pending_candidate');
+        if (pending) {
+            try {
+                const c = JSON.parse(pending);
+                localStorage.removeItem('pending_candidate');
+                
+                // Check for duplicate
+                const { data: existing } = await supabase
+                    .from('candidates')
+                    .select('id')
+                    .eq('linkedin', c.linkedin)
+                    .single();
+                
+                if (!existing) {
+                    await supabase.from('candidates').insert({
+                        name: c.name || 'Unknown',
+                        linkedin: c.linkedin || '',
+                        type: c.type || 'contract',
+                        title: c.title || '',
+                        location: c.location || ''
+                    });
+                    showNotify('✓ Added: ' + c.name);
+                    loadAll();
+                } else {
+                    showNotify('Already exists: ' + c.name);
+                }
+            } catch(e) { console.error(e); }
+        }
+    };
+
+    const loadAll = async () => {
+        setLoading(true);
+        const [cand, cli, cont, job, sub, act] = await Promise.all([
+            supabase.from('candidates').select('*').order('created_at', { ascending: false }),
+            supabase.from('clients').select('*').order('created_at', { ascending: false }),
+            supabase.from('contacts').select('*').order('created_at', { ascending: false }),
+            supabase.from('jobs').select('*').order('created_at', { ascending: false }),
+            supabase.from('submissions').select('*').order('created_at', { ascending: false }),
+            supabase.from('activities').select('*').order('created_at', { ascending: false })
+        ]);
+        setCandidates(cand.data || []);
+        setClients(cli.data || []);
+        setContacts(cont.data || []);
+        setJobs(job.data || []);
+        setSubmissions(sub.data || []);
+        setActivities(act.data || []);
+        setLoading(false);
+    };
+
+    const showNotify = (msg) => {
+        setNotify(msg);
+        setTimeout(() => setNotify(null), 3000);
+    };
+
+    const saveCandidate = async (data) => {
+        if (editItem?.id) {
+            await supabase.from('candidates').update(data).eq('id', editItem.id);
+        } else {
+            await supabase.from('candidates').insert(data);
+        }
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Saved');
+    };
+
+    const deleteCandidate = async (id) => {
+        if (confirm('Delete this candidate?')) {
+            await supabase.from('candidates').delete().eq('id', id);
+            loadAll();
+            setDetailItem(null);
+            showNotify('Deleted');
+        }
+    };
+
+    const saveClient = async (data) => {
+        if (editItem?.id) {
+            await supabase.from('clients').update(data).eq('id', editItem.id);
+        } else {
+            await supabase.from('clients').insert(data);
+        }
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Saved');
+    };
+
+    const saveContact = async (data) => {
+        if (editItem?.id) {
+            await supabase.from('contacts').update(data).eq('id', editItem.id);
+        } else {
+            await supabase.from('contacts').insert(data);
+        }
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Saved');
+    };
+
+    const saveJob = async (data) => {
+        if (editItem?.id) {
+            await supabase.from('jobs').update(data).eq('id', editItem.id);
+        } else {
+            await supabase.from('jobs').insert(data);
+        }
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Saved');
+    };
+
+    const saveSubmission = async (data) => {
+        const margin = data.charge_rate && data.pay_rate 
+            ? ((data.charge_rate - data.pay_rate) / data.charge_rate * 100).toFixed(1)
+            : 0;
+        const submissionData = { ...data, margin };
+        
+        if (editItem?.id) {
+            await supabase.from('submissions').update(submissionData).eq('id', editItem.id);
+        } else {
+            await supabase.from('submissions').insert(submissionData);
+        }
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Saved');
+    };
+
+    const updateSubmissionStage = async (id, stage) => {
+        await supabase.from('submissions').update({ stage, updated_at: new Date().toISOString() }).eq('id', id);
+        loadAll();
+    };
+
+    const saveActivity = async (data) => {
+        await supabase.from('activities').insert(data);
+        loadAll();
+        setModal(null);
+        setEditItem(null);
+        showNotify('✓ Logged');
+    };
+
+    if (loading) {
+        return <div className="loading">Loading...</div>;
+    }
+
+    return (
+        <div className="app">
+            {notify && <div className="notification">{notify}</div>}
+            
+            <div className="sidebar">
+                <div className="logo">Themis <span>CRM</span></div>
+                <div className="nav-section">Core</div>
+                <button className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => { setView('dashboard'); setDetailItem(null); }}>📊 Dashboard</button>
+                <button className={`nav-item ${view === 'candidates' ? 'active' : ''}`} onClick={() => { setView('candidates'); setDetailItem(null); }}>👤 Candidates</button>
+                <button className={`nav-item ${view === 'jobs' ? 'active' : ''}`} onClick={() => { setView('jobs'); setDetailItem(null); }}>💼 Jobs</button>
+                <button className={`nav-item ${view === 'pipeline' ? 'active' : ''}`} onClick={() => { setView('pipeline'); setDetailItem(null); }}>🎯 Pipeline</button>
+                <div className="nav-section">Business Dev</div>
+                <button className={`nav-item ${view === 'clients' ? 'active' : ''}`} onClick={() => { setView('clients'); setDetailItem(null); }}>🏢 Clients</button>
+                <button className={`nav-item ${view === 'contacts' ? 'active' : ''}`} onClick={() => { setView('contacts'); setDetailItem(null); }}>📇 Contacts</button>
+                <div className="nav-section">Activity</div>
+                <button className={`nav-item ${view === 'activities' ? 'active' : ''}`} onClick={() => { setView('activities'); setDetailItem(null); }}>📝 Activity Log</button>
+            </div>
+            
+            <div className="main">
+                {view === 'dashboard' && <Dashboard candidates={candidates} clients={clients} jobs={jobs} submissions={submissions} activities={activities} />}
+                {view === 'candidates' && <Candidates candidates={candidates} search={search} setSearch={setSearch} onAdd={() => { setEditItem(null); setModal('candidate'); }} onSelect={c => setDetailItem({ type: 'candidate', data: c })} />}
+                {view === 'jobs' && <Jobs jobs={jobs} clients={clients} search={search} setSearch={setSearch} onAdd={() => { setEditItem(null); setModal('job'); }} onSelect={j => setDetailItem({ type: 'job', data: j })} />}
+                {view === 'pipeline' && <Pipeline submissions={submissions} candidates={candidates} jobs={jobs} clients={clients} onUpdateStage={updateSubmissionStage} onAdd={() => { setEditItem(null); setModal('submission'); }} />}
+                {view === 'clients' && <Clients clients={clients} search={search} setSearch={setSearch} onAdd={() => { setEditItem(null); setModal('client'); }} onEdit={c => { setEditItem(c); setModal('client'); }} />}
+                {view === 'contacts' && <Contacts contacts={contacts} clients={clients} search={search} setSearch={setSearch} onAdd={() => { setEditItem(null); setModal('contact'); }} onEdit={c => { setEditItem(c); setModal('contact'); }} />}
+                {view === 'activities' && <Activities activities={activities} candidates={candidates} contacts={contacts} jobs={jobs} onAdd={() => { setEditItem(null); setModal('activity'); }} />}
+            </div>
+
+            {detailItem?.type === 'candidate' && (
+                <CandidateDetail 
+                    candidate={detailItem.data} 
+                    submissions={submissions.filter(s => s.candidate_id === detailItem.data.id)}
+                    jobs={jobs}
+                    onClose={() => setDetailItem(null)} 
+                    onEdit={() => { setEditItem(detailItem.data); setModal('candidate'); }}
+                    onDelete={() => deleteCandidate(detailItem.data.id)}
+                    onAddSubmission={() => { setEditItem({ candidate_id: detailItem.data.id }); setModal('submission'); }}
+                />
+            )}
+
+            {modal === 'candidate' && <CandidateModal item={editItem} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveCandidate} />}
+            {modal === 'client' && <ClientModal item={editItem} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveClient} />}
+            {modal === 'contact' && <ContactModal item={editItem} clients={clients} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveContact} />}
+            {modal === 'job' && <JobModal item={editItem} clients={clients} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveJob} />}
+            {modal === 'submission' && <SubmissionModal item={editItem} candidates={candidates} jobs={jobs} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveSubmission} />}
+            {modal === 'activity' && <ActivityModal item={editItem} candidates={candidates} contacts={contacts} jobs={jobs} onClose={() => { setModal(null); setEditItem(null); }} onSave={saveActivity} />}
+        </div>
+    );
+}
+
+function Dashboard({ candidates, clients, jobs, submissions, activities }) {
+    const openJobs = jobs.filter(j => j.status === 'Open').length;
+    const inPipeline = submissions.filter(s => !['Placed', 'Rejected'].includes(s.stage)).length;
+    const placements = submissions.filter(s => s.stage === 'Placed').length;
+    
+    return (
+        <div>
+            <div className="topbar"><h1>Dashboard</h1></div>
+            <div className="kpi-grid">
+                <div className="kpi highlight"><div className="kpi-value">{candidates.length}</div><div className="kpi-label">Candidates</div></div>
+                <div className="kpi"><div className="kpi-value">{clients.length}</div><div className="kpi-label">Clients</div></div>
+                <div className="kpi"><div className="kpi-value">{openJobs}</div><div className="kpi-label">Open Jobs</div></div>
+                <div className="kpi"><div className="kpi-value">{inPipeline}</div><div className="kpi-label">In Pipeline</div></div>
+                <div className="kpi highlight"><div className="kpi-value">{placements}</div><div className="kpi-label">Placements</div></div>
+            </div>
+            <h3 style={{marginBottom: '15px'}}>Recent Candidates</h3>
+            {candidates.slice(0, 5).map(c => (
+                <div key={c.id} className="card" style={{marginBottom: '10px', cursor: 'default'}}>
+                    <h3>{c.name}</h3>
+                    <p>{c.title || c.email || c.location || 'No details'}</p>
+                </div>
+            ))}
+            {candidates.length === 0 && <p style={{color: '#888'}}>No candidates yet. Pull from LinkedIn!</p>}
+        </div>
+    );
+}
+
+function Candidates({ candidates, search, setSearch, onAdd, onSelect }) {
+    const filtered = candidates.filter(c => 
+        !search || 
+        c.name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase()) ||
+        c.skills?.some(s => s.toLowerCase().includes(search.toLowerCase()))
+    );
+    
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Candidates ({candidates.length})</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ Add</button>
+            </div>
+            <div className="search-box">
+                <input placeholder="Search by name, email, skills..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {filtered.length === 0 ? (
+                <div className="empty">No candidates found</div>
+            ) : (
+                <div className="grid">
+                    {filtered.map(c => (
+                        <div key={c.id} className="card" onClick={() => onSelect(c)}>
+                            <h3>{c.name}</h3>
+                            <p>{c.email || ''}</p>
+                            <p>{c.location || ''}</p>
+                            {c.linkedin && <p><a href={c.linkedin} target="_blank" onClick={e => e.stopPropagation()}>LinkedIn</a></p>}
+                            <span className={`tag ${c.type}`}>{c.type === 'perm' ? 'Permanent' : 'Contract'}</span>
+                            {c.day_rate && <span className="tag">£{c.day_rate}/day</span>}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function CandidateDetail({ candidate, submissions, jobs, onClose, onEdit, onDelete, onAddSubmission }) {
+    return (
+        <div className="detail-panel">
+            <div className="detail-header">
+                <div>
+                    <h2>{candidate.name}</h2>
+                    <p style={{color: '#666'}}>{candidate.title || candidate.email || ''}</p>
+                </div>
+                <button className="detail-close" onClick={onClose}>×</button>
+            </div>
+            
+            <div style={{display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap'}}>
+                <button className="btn btn-secondary" onClick={onEdit}>✏️ Edit</button>
+                <button className="btn btn-secondary" onClick={onAddSubmission}>🎯 Submit to Job</button>
+                <button className="btn btn-danger" onClick={onDelete}>🗑️ Delete</button>
+            </div>
+            
+            <div className="detail-section">
+                <h4>Details</h4>
+                <p><strong>Type:</strong> {candidate.type === 'perm' ? 'Permanent' : 'Contract'}</p>
+                <p><strong>Location:</strong> {candidate.location || '-'}</p>
+                <p><strong>Phone:</strong> {candidate.phone || '-'}</p>
+                <p><strong>Email:</strong> {candidate.email || '-'}</p>
+                {candidate.day_rate && <p><strong>Day Rate:</strong> £{candidate.day_rate}</p>}
+                {candidate.salary && <p><strong>Salary:</strong> £{candidate.salary?.toLocaleString()}</p>}
+                {candidate.linkedin && <p><strong>LinkedIn:</strong> <a href={candidate.linkedin} target="_blank">View Profile</a></p>}
+            </div>
+            
+            <div className="detail-section">
+                <h4>Submissions ({submissions.length})</h4>
+                {submissions.length === 0 ? (
+                    <p style={{color: '#888'}}>Not submitted to any jobs yet</p>
+                ) : (
+                    submissions.map(s => {
+                        const job = jobs.find(j => j.id === s.job_id);
+                        return (
+                            <div key={s.id} style={{padding: '10px', background: '#f5f5f5', borderRadius: '8px', marginBottom: '8px'}}>
+                                <strong>{job?.title || 'Unknown Job'}</strong>
+                                <p style={{fontSize: '13px', color: '#666'}}>Stage: {s.stage} • Margin: {s.margin}%</p>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+}
+
+function Jobs({ jobs, clients, search, setSearch, onAdd, onSelect }) {
+    const filtered = jobs.filter(j => !search || j.title?.toLowerCase().includes(search.toLowerCase()));
+    
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Jobs ({jobs.length})</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ Add</button>
+            </div>
+            <div className="search-box">
+                <input placeholder="Search jobs..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {filtered.length === 0 ? (
+                <div className="empty">No jobs found</div>
+            ) : (
+                <div className="grid">
+                    {filtered.map(j => {
+                        const client = clients.find(c => c.id === j.client_id);
+                        return (
+                            <div key={j.id} className="card" onClick={() => onSelect(j)}>
+                                <h3>{j.title}</h3>
+                                {client && <p>🏢 {client.name}</p>}
+                                <p>{j.location || ''}</p>
+                                <span className={`tag ${j.type}`}>{j.type === 'perm' ? 'Permanent' : 'Contract'}</span>
+                                <span className="tag">{j.status || 'Open'}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Pipeline({ submissions, candidates, jobs, clients, onUpdateStage, onAdd }) {
+    const stages = ['Sourced', 'Submitted', '1st Interview', '2nd Interview', 'Offer', 'Placed'];
+    
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Pipeline</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ New Submission</button>
+            </div>
+            <div className="pipeline">
+                {stages.map(stage => {
+                    const stageSubmissions = submissions.filter(s => s.stage === stage);
+                    return (
+                        <div key={stage} className="pipeline-col">
+                            <div className="pipeline-header">
+                                <span className="pipeline-title">{stage}</span>
+                                <span className="pipeline-count">{stageSubmissions.length}</span>
+                            </div>
+                            {stageSubmissions.map(sub => {
+                                const candidate = candidates.find(c => c.id === sub.candidate_id);
+                                const job = jobs.find(j => j.id === sub.job_id);
+                                const client = job ? clients.find(c => c.id === job.client_id) : null;
+                                const marginClass = parseFloat(sub.margin) >= 20 ? 'margin-good' : parseFloat(sub.margin) >= 15 ? 'margin-ok' : 'margin-low';
+                                
+                                return (
+                                    <div key={sub.id} className="pipeline-card">
+                                        <h4>{candidate?.name || 'Unknown'}</h4>
+                                        <p>{job?.title || 'Unknown Job'}</p>
+                                        {client && <p style={{fontSize: '11px'}}>🏢 {client.name}</p>}
+                                        <p className={marginClass} style={{fontWeight: '600'}}>{sub.margin}% margin</p>
+                                        <select 
+                                            style={{width: '100%', marginTop: '8px', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd'}}
+                                            value=""
+                                            onChange={e => e.target.value && onUpdateStage(sub.id, e.target.value)}
+                                        >
+                                            <option value="">Move to...</option>
+                                            {stages.filter(s => s !== stage).map(s => <option key={s} value={s}>{s}</option>)}
+                                            <option value="Rejected">❌ Rejected</option>
+                                        </select>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function Clients({ clients, search, setSearch, onAdd, onEdit }) {
+    const filtered = clients.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
+    
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Clients ({clients.length})</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ Add</button>
+            </div>
+            <div className="search-box">
+                <input placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {filtered.length === 0 ? (
+                <div className="empty">No clients found</div>
+            ) : (
+                <div className="grid">
+                    {filtered.map(c => (
+                        <div key={c.id} className="card" onClick={() => onEdit(c)}>
+                            <h3>{c.name}</h3>
+                            <p>{c.industry || ''}</p>
+                            <p>{c.location || ''}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Contacts({ contacts, clients, search, setSearch, onAdd, onEdit }) {
+    const filtered = contacts.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
+    
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Contacts ({contacts.length})</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ Add</button>
+            </div>
+            <div className="search-box">
+                <input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            {filtered.length === 0 ? (
+                <div className="empty">No contacts found</div>
+            ) : (
+                <div className="grid">
+                    {filtered.map(c => {
+                        const client = clients.find(cl => cl.id === c.client_id);
+                        return (
+                            <div key={c.id} className="card" onClick={() => onEdit(c)}>
+                                <h3>{c.name}</h3>
+                                <p>{c.role || ''}</p>
+                                <p>{c.email || ''}</p>
+                                {client && <span className="tag">🏢 {client.name}</span>}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Activities({ activities, candidates, contacts, jobs, onAdd }) {
+    return (
+        <div>
+            <div className="topbar">
+                <h1>Activity Log ({activities.length})</h1>
+                <button className="btn btn-primary" onClick={onAdd}>+ Log Activity</button>
+            </div>
+            {activities.length === 0 ? (
+                <div className="empty">No activities logged</div>
+            ) : (
+                <div>
+                    {activities.map(a => {
+                        let relatedName = '';
+                        if (a.related_type === 'candidate') relatedName = candidates.find(c => c.id === a.related_id)?.name;
+                        if (a.related_type === 'contact') relatedName = contacts.find(c => c.id === a.related_id)?.name;
+                        if (a.related_type === 'job') relatedName = jobs.find(j => j.id === a.related_id)?.title;
+                        
+                        return (
+                            <div key={a.id} className="card" style={{marginBottom: '10px', cursor: 'default'}}>
+                                <h3>{a.type} {relatedName && `→ ${relatedName}`}</h3>
+                                <p>{a.notes || ''}</p>
+                                <p style={{fontSize: '12px', color: '#888'}}>{new Date(a.created_at).toLocaleString()} • {a.owner || ''}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// MODALS
+function CandidateModal({ item, onClose, onSave }) {
+    const [form, setForm] = useState({
+        name: item?.name || '',
+        email: item?.email || '',
+        phone: item?.phone || '',
+        location: item?.location || '',
+        linkedin: item?.linkedin || '',
+        title: item?.title || '',
+        type: item?.type || 'contract',
+        day_rate: item?.day_rate || '',
+        salary: item?.salary || '',
+        owner: item?.owner || ''
+    });
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>{item?.id ? 'Edit' : 'Add'} Candidate</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-row">
+                        <div className="form-group"><label>Name *</label><input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+                        <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group"><label>Phone</label><input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
+                        <div className="form-group"><label>Location</label><input value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></div>
+                    </div>
+                    <div className="form-group"><label>Job Title</label><input value={form.title} onChange={e => setForm({...form, title: e.target.value})} /></div>
+                    <div className="form-group"><label>LinkedIn URL</label><input value={form.linkedin} onChange={e => setForm({...form, linkedin: e.target.value})} /></div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Type</label>
+                            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                                <option value="contract">Contract</option>
+                                <option value="perm">Permanent</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>{form.type === 'perm' ? 'Salary (£)' : 'Day Rate (£)'}</label>
+                            {form.type === 'contract' 
+                                ? <input type="number" value={form.day_rate} onChange={e => setForm({...form, day_rate: e.target.value})} />
+                                : <input type="number" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} />
+                            }
+                        </div>
+                    </div>
+                    <div className="form-group"><label>Owner</label><input value={form.owner} onChange={e => setForm({...form, owner: e.target.value})} /></div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function ClientModal({ item, onClose, onSave }) {
+    const [form, setForm] = useState({
+        name: item?.name || '',
+        industry: item?.industry || '',
+        location: item?.location || '',
+        website: item?.website || ''
+    });
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>{item?.id ? 'Edit' : 'Add'} Client</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-group"><label>Company Name *</label><input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+                    <div className="form-group"><label>Industry</label><input value={form.industry} onChange={e => setForm({...form, industry: e.target.value})} /></div>
+                    <div className="form-row">
+                        <div className="form-group"><label>Location</label><input value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></div>
+                        <div className="form-group"><label>Website</label><input value={form.website} onChange={e => setForm({...form, website: e.target.value})} /></div>
+                    </div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function ContactModal({ item, clients, onClose, onSave }) {
+    const [form, setForm] = useState({
+        name: item?.name || '',
+        role: item?.role || '',
+        email: item?.email || '',
+        phone: item?.phone || '',
+        client_id: item?.client_id || ''
+    });
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>{item?.id ? 'Edit' : 'Add'} Contact</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-row">
+                        <div className="form-group"><label>Name *</label><input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+                        <div className="form-group"><label>Role</label><input value={form.role} onChange={e => setForm({...form, role: e.target.value})} /></div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
+                        <div className="form-group"><label>Phone</label><input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
+                    </div>
+                    <div className="form-group">
+                        <label>Client</label>
+                        <select value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
+                            <option value="">Select client...</option>
+                            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function JobModal({ item, clients, onClose, onSave }) {
+    const [form, setForm] = useState({
+        title: item?.title || '',
+        client_id: item?.client_id || '',
+        location: item?.location || '',
+        type: item?.type || 'contract',
+        status: item?.status || 'Open',
+        rate_min: item?.rate_min || '',
+        rate_max: item?.rate_max || '',
+        salary_min: item?.salary_min || '',
+        salary_max: item?.salary_max || '',
+        owner: item?.owner || ''
+    });
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>{item?.id ? 'Edit' : 'Add'} Job</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-group"><label>Job Title *</label><input required value={form.title} onChange={e => setForm({...form, title: e.target.value})} /></div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Client</label>
+                            <select value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
+                                <option value="">Select client...</option>
+                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group"><label>Location</label><input value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Type</label>
+                            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                                <option value="contract">Contract</option>
+                                <option value="perm">Permanent</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Status</label>
+                            <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                                <option value="Open">Open</option>
+                                <option value="Hold">On Hold</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+                    {form.type === 'contract' ? (
+                        <div className="form-row">
+                            <div className="form-group"><label>Min Rate (£)</label><input type="number" value={form.rate_min} onChange={e => setForm({...form, rate_min: e.target.value})} /></div>
+                            <div className="form-group"><label>Max Rate (£)</label><input type="number" value={form.rate_max} onChange={e => setForm({...form, rate_max: e.target.value})} /></div>
+                        </div>
+                    ) : (
+                        <div className="form-row">
+                            <div className="form-group"><label>Min Salary (£)</label><input type="number" value={form.salary_min} onChange={e => setForm({...form, salary_min: e.target.value})} /></div>
+                            <div className="form-group"><label>Max Salary (£)</label><input type="number" value={form.salary_max} onChange={e => setForm({...form, salary_max: e.target.value})} /></div>
+                        </div>
+                    )}
+                    <div className="form-group"><label>Owner</label><input value={form.owner} onChange={e => setForm({...form, owner: e.target.value})} /></div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function SubmissionModal({ item, candidates, jobs, onClose, onSave }) {
+    const [form, setForm] = useState({
+        candidate_id: item?.candidate_id || '',
+        job_id: item?.job_id || '',
+        pay_rate: item?.pay_rate || '',
+        charge_rate: item?.charge_rate || '',
+        stage: item?.stage || 'Sourced'
+    });
+    
+    const margin = form.charge_rate && form.pay_rate 
+        ? ((form.charge_rate - form.pay_rate) / form.charge_rate * 100).toFixed(1) 
+        : 0;
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>{item?.id ? 'Edit' : 'New'} Submission</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-group">
+                        <label>Candidate *</label>
+                        <select required value={form.candidate_id} onChange={e => setForm({...form, candidate_id: e.target.value})}>
+                            <option value="">Select candidate...</option>
+                            {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Job *</label>
+                        <select required value={form.job_id} onChange={e => setForm({...form, job_id: e.target.value})}>
+                            <option value="">Select job...</option>
+                            {jobs.filter(j => j.status !== 'Closed').map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group"><label>Pay Rate (£/day) *</label><input type="number" required value={form.pay_rate} onChange={e => setForm({...form, pay_rate: e.target.value})} /></div>
+                        <div className="form-group"><label>Charge Rate (£/day) *</label><input type="number" required value={form.charge_rate} onChange={e => setForm({...form, charge_rate: e.target.value})} /></div>
+                    </div>
+                    {form.pay_rate && form.charge_rate && (
+                        <div style={{padding: '20px', background: parseFloat(margin) >= 20 ? '#e8ffe8' : parseFloat(margin) >= 15 ? '#fffde8' : '#ffe8e8', borderRadius: '8px', textAlign: 'center', marginBottom: '15px'}}>
+                            <div style={{fontSize: '28px', fontWeight: '700'}}>{margin}%</div>
+                            <div style={{color: '#666'}}>Margin (£{(form.charge_rate - form.pay_rate).toFixed(0)}/day)</div>
+                        </div>
+                    )}
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function ActivityModal({ item, candidates, contacts, jobs, onClose, onSave }) {
+    const [form, setForm] = useState({
+        type: item?.type || 'Call',
+        related_type: item?.related_type || 'candidate',
+        related_id: item?.related_id || '',
+        owner: item?.owner || '',
+        notes: item?.notes || ''
+    });
+    
+    let options = form.related_type === 'candidate' ? candidates : form.related_type === 'contact' ? contacts : jobs;
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <h2>Log Activity</h2>
+                <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
+                    <div className="form-group">
+                        <label>Type</label>
+                        <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                            <option>Call</option>
+                            <option>Email</option>
+                            <option>Meeting</option>
+                            <option>LinkedIn</option>
+                            <option>CV Sent</option>
+                            <option>Interview</option>
+                            <option>Note</option>
+                        </select>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Related To</label>
+                            <select value={form.related_type} onChange={e => setForm({...form, related_type: e.target.value, related_id: ''})}>
+                                <option value="candidate">Candidate</option>
+                                <option value="contact">Contact</option>
+                                <option value="job">Job</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Select</label>
+                            <select value={form.related_id} onChange={e => setForm({...form, related_id: e.target.value})}>
+                                <option value="">Select...</option>
+                                {options.map(o => <option key={o.id} value={o.id}>{o.name || o.title}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="form-group"><label>Owner</label><input value={form.owner} onChange={e => setForm({...form, owner: e.target.value})} /></div>
+                    <div className="form-group"><label>Notes</label><textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
