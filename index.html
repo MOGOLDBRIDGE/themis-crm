@@ -144,6 +144,21 @@
     </style>
 </head>
 <body>
+    <script>
+(function(){
+    var params = new URLSearchParams(window.location.search);
+    var data = params.get('addCandidate');
+    if(data){
+        try {
+            var c = JSON.parse(data);
+            var id = Date.now().toString();
+            localStorage.setItem('themis:candidate:'+id, JSON.stringify({id:id,name:c.name||'Unknown',linkedin:c.linkedin||'',type:'contract',skills:[],createdAt:new Date().toISOString()}));
+            window.history.replaceState({},'',window.location.pathname);
+            alert('Added: ' + c.name);
+        }catch(e){console.error(e);}
+    }
+})();
+</script>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
