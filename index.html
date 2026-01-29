@@ -144,6 +144,19 @@
     </style>
 </head>
 <body>
+    <script>
+(function(){
+    var params = new URLSearchParams(window.location.search);
+    var data = params.get('addCandidate');
+    if(data){
+        try {
+            var c = JSON.parse(data);
+            localStorage.setItem('pending_candidate', JSON.stringify(c));
+            window.history.replaceState({},'',window.location.pathname);
+        }catch(e){console.error(e);}
+    }
+})();
+</script>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
